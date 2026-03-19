@@ -21,7 +21,7 @@ services:
       # Torch hub cache (pre-downloaded weights: s3fd, etc.)
       - /home/david/.cache/torch:/root/.cache/torch:ro
     ports:
-      - "127.0.0.1:8400:8400"
+      - "8400:8400"
     networks:
       - lipsync_net
     healthcheck:
