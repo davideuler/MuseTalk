@@ -1,0 +1,39 @@
+services:
+  musetalk-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: musetalk-service:latest
+    container_name: musetalk-service
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+      - MUSETALK_ROOT=/app
+      - FFMPEG_PATH=/app/ffmpeg-4.4-amd64-static
+      - RESULTS_DIR=/tmp/musetalk_results
+    volumes:
+      # MuseTalk code + models (read-only; includes models/whisper, models/musetalk, etc.)
+      - /mnt/nvme/models/MuseTalk:/app:ro
+      # Results (writable)
+      - musetalk_results:/tmp/musetalk_results
+      # Torch hub cache (pre-downloaded weights: s3fd, etc.)
+      - /home/david/.cache/torch:/root/.cache/torch:ro
+    ports:
+      - "127.0.0.1:8400:8400"
+    networks:
+      - lipsync_net
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8400/lipsync/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
+volumes:
+  musetalk_results:
+
+networks:
+  lipsync_net:
+    driver: bridge
