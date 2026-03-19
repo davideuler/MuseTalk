@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MuseTalk 口型同步</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f0f13;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6ee7f7, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .subtitle { color: #888; font-size: 0.95rem; margin-bottom: 40px; }
+
+  .card {
+    background: #1a1a24;
+    border: 1px solid #2a2a3a;
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 700px;
+    margin-bottom: 24px;
+  }
+  .card h2 { font-size: 1rem; color: #aaa; margin-bottom: 20px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .upload-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .upload-box {
+    border: 2px dashed #2a2a3a;
+    border-radius: 12px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .upload-box:hover, .upload-box.drag { border-color: #6ee7f7; background: #0f1a20; }
+  .upload-box.has-file { border-color: #a78bfa; background: #1a1025; }
+  .upload-box input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+  .upload-label { font-size: 0.85rem; color: #888; }
+  .upload-name { font-size: 0.8rem; color: #a78bfa; margin-top: 6px; word-break: break-all; }
+
+  .preview-row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .preview-box { flex: 1; border-radius: 10px; overflow: hidden; background: #0a0a12; border: 1px solid #2a2a3a; min-height: 160px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.8rem; }
+  .preview-box video { width: 100%; display: block; border-radius: 10px; }
+
+  .options { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }
+  label.opt { color: #aaa; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
+  input[type=checkbox] { accent-color: #6ee7f7; width: 16px; height: 16px; }
+  input[type=range] { accent-color: #a78bfa; width: 100px; }
+  .opt-val { color: #e0e0e0; min-width: 24px; text-align: center; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: linear-gradient(135deg, #6ee7f7, #a78bfa);
+    color: #0f0f13;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .progress-wrap { margin-top: 20px; display: none; }
+  .progress-label { font-size: 0.85rem; color: #aaa; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .progress-bar-bg { background: #2a2a3a; border-radius: 8px; height: 8px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #6ee7f7, #a78bfa); transition: width 0.4s; width: 0%; }
+
+  .result-card {
+    background: #1a1a24;
+    border: 1px solid #2a2a3a;
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 700px;
+    display: none;
+  }
+  .result-card h2 { font-size: 1rem; color: #6ee7f7; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .result-video { width: 100%; border-radius: 10px; background: #0a0a12; margin-bottom: 16px; }
+  .result-meta { font-size: 0.82rem; color: #666; margin-bottom: 16px; }
+  .result-meta span { color: #aaa; margin-right: 16px; }
+  .dl-btn {
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6ee7f7, #a78bfa);
+    color: #0f0f13;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .error-msg { color: #f87171; font-size: 0.85rem; margin-top: 12px; padding: 10px 14px; background: #2a1010; border-radius: 8px; display: none; }
+
+  .steps { display: flex; gap: 8px; align-items: center; font-size: 0.82rem; color: #555; margin-top: 12px; }
+  .step { padding: 4px 10px; border-radius: 20px; background: #2a2a3a; }
+  .step.active { background: #1a2535; color: #6ee7f7; }
+  .step.done { background: #1a2520; color: #6ee7f7; }
+
+  @media (max-width: 480px) { .upload-row, .preview-row { grid-template-columns: 1fr; flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<h1>🎬 MuseTalk 口型同步</h1>
+<p class="subtitle">上传视频 + 音频，AI 自动对齐口型 &nbsp;•&nbsp; RTX 4090 加速</p>
+
+<div class="card">
+  <h2>📁 上传文件</h2>
+  <div class="upload-row">
+    <div class="upload-box" id="videoBox">
+      <input type="file" id="videoFile" accept="video/*">
+      <div class="upload-icon">🎥</div>
+      <div class="upload-label">点击或拖入视频<br><small>mp4 / mov / avi</small></div>
+      <div class="upload-name" id="videoName"></div>
+    </div>
+    <div class="upload-box" id="audioBox">
+      <input type="file" id="audioFile" accept="audio/*">
+      <div class="upload-icon">🎙️</div>
+      <div class="upload-label">点击或拖入音频<br><small>wav / mp3 / m4a</small></div>
+      <div class="upload-name" id="audioName"></div>
+    </div>
+  </div>
+
+  <div class="preview-row">
+    <div class="preview-box" id="videoPreview">视频预览</div>
+    <div class="preview-box" id="audioPreview">音频预览</div>
+  </div>
+
+  <div class="options">
+    <label class="opt">
+      <input type="checkbox" id="useFloat16" checked>
+      Float16 加速
+    </label>
+    <label class="opt">
+      BBox 偏移
+      <input type="range" id="bboxShift" min="-10" max="10" value="0" step="1" oninput="document.getElementById('bboxVal').textContent=this.value">
+      <span class="opt-val" id="bboxVal">0</span>
+    </label>
+  </div>
+
+  <button class="btn" id="submitBtn" onclick="submitJob()" disabled>🚀 开始生成</button>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label">
+      <span id="stageLabel">等待中...</span>
+      <span id="elapsedLabel">0s</span>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="steps">
+      <span class="step" id="step1">上传</span>
+      <span>›</span>
+      <span class="step" id="step2">推理</span>
+      <span>›</span>
+      <span class="step" id="step3">合成</span>
+      <span>›</span>
+      <span class="step" id="step4">完成</span>
+    </div>
+  </div>
+  <div class="error-msg" id="errorMsg"></div>
+</div>
+
+<div class="result-card" id="resultCard">
+  <h2>✅ 生成完成</h2>
+  <video class="result-video" id="resultVideo" controls></video>
+  <div class="result-meta" id="resultMeta"></div>
+  <a class="dl-btn" id="dlBtn" download="lipsync_result.mp4">⬇️ 下载视频</a>
+</div>
+
+<script>
+const BASE = (window.location.pathname.startsWith('/lipsync') ? '/lipsync' : '');
+let startTime = null, timer = null, currentJobId = null;
+
+// File input handlers
+['video','audio'].forEach(type => {
+  const input = document.getElementById(type+'File');
+  const box   = document.getElementById(type+'Box');
+  const name  = document.getElementById(type+'Name');
+  const prev  = document.getElementById(type+'Preview');
+
+  input.addEventListener('change', () => {
+    const f = input.files[0];
+    if (!f) return;
+    box.classList.add('has-file');
+    name.textContent = f.name;
+    prev.innerHTML = '';
+    if (type === 'video') {
+      const v = document.createElement('video');
+      v.controls = true; v.style.width = '100%';
+      v.src = URL.createObjectURL(f);
+      prev.appendChild(v);
+    } else {
+      const a = document.createElement('audio');
+      a.controls = true; a.style.width = '100%';
+      a.src = URL.createObjectURL(f);
+      prev.style.padding = '16px';
+      prev.appendChild(a);
+    }
+    checkReady();
+  });
+  ['dragenter','dragover'].forEach(e => box.addEventListener(e, ev => { ev.preventDefault(); box.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(e => box.addEventListener(e, ev => { ev.preventDefault(); box.classList.remove('drag'); }));
+  box.addEventListener('drop', ev => {
+    const f = ev.dataTransfer.files[0];
+    if (f) { const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; input.dispatchEvent(new Event('change')); }
+  });
+});
+
+function checkReady() {
+  const ok = document.getElementById('videoFile').files.length > 0 &&
+              document.getElementById('audioFile').files.length > 0;
+  document.getElementById('submitBtn').disabled = !ok;
+}
+
+function setStep(n) {
+  ['step1','step2','step3','step4'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'step' + (i < n-1 ? ' done' : i === n-1 ? ' active' : '');
+  });
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('stageLabel').textContent = label;
+}
+
+async function submitJob() {
+  const videoFile = document.getElementById('videoFile').files[0];
+  const audioFile = document.getElementById('audioFile').files[0];
+  const useFloat16 = document.getElementById('useFloat16').checked;
+  const bboxShift = parseInt(document.getElementById('bboxShift').value);
+
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'block';
+  setStep(1); setProgress(10, '上传中...');
+
+  startTime = Date.now();
+  timer = setInterval(() => {
+    document.getElementById('elapsedLabel').textContent = Math.round((Date.now()-startTime)/1000) + 's';
+  }, 1000);
+
+  try {
+    const form = new FormData();
+    form.append('video', videoFile);
+    form.append('audio', audioFile);
+    form.append('use_float16', useFloat16);
+    form.append('bbox_shift', bboxShift);
+
+    const res = await fetch(BASE + '/sync', { method: 'POST', body: form });
+    if (!res.ok) throw new Error('上传失败: ' + res.status);
+    const job = await res.json();
+    currentJobId = job.job_id;
+
+    setStep(2); setProgress(25, '推理中 (RTX 4090)...');
+    await pollJob(currentJobId);
+
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+async function pollJob(jobId) {
+  let dots = 0;
+  while (true) {
+    await new Promise(r => setTimeout(r, 2000));
+    const r = await fetch(BASE + '/jobs/' + jobId);
+    const j = await r.json();
+    dots = (dots + 1) % 4;
+    const d = '.'.repeat(dots);
+
+    if (j.status === 'running') {
+      const elapsed = Math.round((Date.now()-startTime)/1000);
+      const pct = Math.min(25 + elapsed * 0.8, 85);
+      setProgress(pct, '推理中' + d + ' (' + elapsed + 's)');
+    } else if (j.status === 'success') {
+      setStep(3); setProgress(95, '合成视频...');
+      await loadResult(jobId, j);
+      return;
+    } else if (j.status === 'failed') {
+      throw new Error('推理失败: ' + (j.error || '').slice(-200));
+    }
+  }
+}
+
+async function loadResult(jobId, job) {
+  await new Promise(r => setTimeout(r, 500));
+  setStep(4); setProgress(100, '完成！');
+  clearInterval(timer);
+
+  const videoUrl = BASE + '/result/' + jobId;
+  const video = document.getElementById('resultVideo');
+  video.src = videoUrl;
+  video.load();
+
+  const dlBtn = document.getElementById('dlBtn');
+  dlBtn.href = videoUrl;
+  dlBtn.download = 'lipsync_' + jobId + '.mp4';
+
+  const elapsed = job.elapsed_s || Math.round((Date.now()-startTime)/1000);
+  const sizeMb = job.size_mb || '?';
+  document.getElementById('resultMeta').innerHTML =
+    `<span>⏱ 耗时: ${elapsed}s</span><span>📦 大小: ${sizeMb} MB</span><span>🆔 Job: ${jobId}</span>`;
+
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('submitBtn').disabled = false;
+}
+
+function showError(msg) {
+  clearInterval(timer);
+  document.getElementById('errorMsg').textContent = '❌ ' + msg;
+  document.getElementById('errorMsg').style.display = 'block';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('submitBtn').disabled = false;
+}
+</script>
+</body>
+</html>
